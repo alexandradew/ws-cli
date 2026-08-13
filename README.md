@@ -2,6 +2,50 @@
 
 A terminal WhatsApp client. Scan a QR code once, then chat from a full-screen TUI that looks like an ordinary terminal tool rather than WhatsApp.
 
+## Preview
+
+Mockups below — hand-drawn with placeholder names/messages, not real screenshots.
+
+Login screen (the block pattern is illustrative, not a real scannable code):
+
+```
+┌ ─────────────────────────────────────┐
+│                                      │
+│        █▀▀▀▀▀█ ▄  ██▀█▀▀▀▀▀█         │
+│        █ ███ █     ▀▄█ ███ █         │
+│        █ ▀▀▀ ██▄    ██ ▀▀▀ █         │
+│        ▀███▀██ ▀    █▀▀▀▀▀█▀         │
+│        █▄█▄█▄ ▀ ▀▀█▄▄██▀▄▄ ▀         │
+│           ▀▄ █▄   ▀█ ▄█ █▀█          │
+│        ▀██▄▀██▄▄▀ ▄▄█ ▄▀▄▄▄          │
+│        █▀▀▀▀▀█ ▀▀██  ▀▀▀▀▀▀█         │
+│        █ ███ █ ▄▀▄▄▀▀ ▀█▄▀▄▀         │
+│        █ ▀▀▀ ██▀ ▀ ▄▄ ▄▄█ ▀█         │
+│        ▀▀▀▀▀▀▀   ▀▀▀▀    ▀▀▀         │
+│                                      │
+│  scan with WhatsApp: Linked Devices  │
+│                                      │
+└──────────────────────────────────────┘
+```
+
+Main view — chat list on the left (unread counts, most recent on top), open thread on the right, input bar along the bottom:
+
+```
+┌ chats ───────────────┬ thread — Dev Team ─────────────────────────────────────────┐
+│> Dev Team            │ 09:14  Grace H. anyone looked at the flaky test yet?       │
+│  Ada Lovelace (2)    │ 09:15  me       found it — race condition, PR incoming     │
+│  build-alerts (12)   │ 09:16  Priya    nice, thanks for the quick turnaround      │
+│  Grace H.            │ 09:20  Grace H. [image] deploy dashboard screenshot        │
+│  Mom (1)             │ 09:21  me       lgtm, merging now  (sending…)              │
+│  Weekend Trip        │                                                            │
+└──────────────────────┴────────────────────────────────────────────────────────────┘
+┌ ──────────────────────────────────────────────────────────────────────────────────┐
+│ > looks good, merging now_                                                        │
+└───────────────────────────────────────────────────────────────────────────────────┘
+```
+
+(The selected chat row and the QR box border render in WhatsApp green in the real app — flat text can't show that.)
+
 ## Requirements
 
 - Node.js (LTS; developed against Node 24)
