@@ -17,6 +17,7 @@ export interface MessageSummary {
   senderName: string;
   body: string;
   timestamp: number;
+  type: string;
 }
 
 export interface WaClientEvents {
@@ -103,6 +104,7 @@ export class WaClient extends EventEmitter {
       senderName,
       body: message.body,
       timestamp: message.timestamp,
+      type: message.type,
     };
   }
 }

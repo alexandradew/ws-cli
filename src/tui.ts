@@ -3,7 +3,7 @@ import blessed from "blessed";
 import type { ChatSummary, MessageSummary } from "./wa-client";
 
 export interface TuiEvents {
-  selectChat: (chatId: string) => void;
+  selectChat: (chatId: string, name: string) => void;
   send: (text: string) => void;
   quit: () => void;
 }
@@ -13,9 +13,36 @@ export declare interface Tui {
   emit<E extends keyof TuiEvents>(event: E, ...args: Parameters<TuiEvents[E]>): boolean;
 }
 
+const WHATSAPP_GREEN = "#25D366";
+// Terminals don't do real alpha compositing, so a "more opaque" green
+// highlight is approximated by blending the brand color toward black.
+const WHATSAPP_GREEN_MUTED = "#0e4226";
+
 function formatTime(unixSeconds: number): string {
   const date = new Date(unixSeconds * 1000);
   return date.toTimeString().slice(0, 5);
+}
+
+const MEDIA_LABELS: Record<string, string> = {
+  image: "[image]",
+  sticker: "[sticker]",
+  video: "[video]",
+  ptt: "[voice note]",
+  audio: "[audio]",
+  document: "[file]",
+  location: "[location]",
+  vcard: "[contact]",
+  multi_vcard: "[contacts]",
+  groups_v4_invite: "[group invite]",
+  revoked: "[message deleted]",
+};
+
+function displayBody(message: MessageSummary): string {
+  const label = MEDIA_LABELS[message.type];
+  if (!label) {
+    return message.body;
+  }
+  return message.body ? `${label} ${message.body}` : label;
 }
 
 export class Tui extends EventEmitter {
@@ -45,6 +72,8 @@ export class Tui extends EventEmitter {
       tags: false,
       hidden: true,
       content: "waiting for QR code...",
+      border: { type: "line" },
+      style: { border: { fg: WHATSAPP_GREEN } },
     });
 
     this.chatList = blessed.list({
@@ -59,7 +88,8 @@ export class Tui extends EventEmitter {
       vi: true,
       mouse: true,
       style: {
-        selected: { inverse: true },
+        selected: { bg: WHATSAPP_GREEN_MUTED, fg: "white", bold: true },
+        item: { hover: { bg: WHATSAPP_GREEN_MUTED } },
         border: { fg: "white" },
       },
     });
@@ -107,7 +137,7 @@ export class Tui extends EventEmitter {
     this.chatList.on("select", (_item, index) => {
       const chat = this.chats[index];
       if (chat) {
-        this.emit("selectChat", chat.id);
+        this.emit("selectChat", chat.id, chat.name);
       }
     });
 
@@ -147,16 +177,51 @@ export class Tui extends EventEmitter {
 
   showChats(chats: ChatSummary[]): void {
     this.chats = chats;
-    const items = chats.map((chat) => {
+    this.sortAndRenderChats();
+  }
+
+  // Bumps a chat's recency (and unread count, for incoming messages to a
+  // chat that isn't currently open) so the list re-sorts with the newest
+  // activity on top, same as WhatsApp's own chat list.
+  registerActivity(message: MessageSummary): void {
+    const index = this.chats.findIndex((chat) => chat.id === message.chatId);
+    if (index === -1) {
+      return;
+    }
+    const chat = this.chats[index];
+    const isActiveChat = message.chatId === this.activeChatId;
+    this.chats[index] = {
+      ...chat,
+      lastMessageTimestamp: message.timestamp,
+      lastMessagePreview: message.body.slice(0, 60),
+      unreadCount: isActiveChat || message.fromMe ? chat.unreadCount : chat.unreadCount + 1,
+    };
+    this.sortAndRenderChats();
+  }
+
+  private sortAndRenderChats(): void {
+    this.chats.sort((a, b) => b.lastMessageTimestamp - a.lastMessageTimestamp);
+    const items = this.chats.map((chat) => {
       const badge = chat.unreadCount > 0 ? ` (${chat.unreadCount})` : "";
       return `${chat.name}${badge}`;
     });
     this.chatList.setItems(items);
+    if (this.activeChatId) {
+      const index = this.chats.findIndex((chat) => chat.id === this.activeChatId);
+      if (index !== -1) {
+        this.chatList.select(index);
+      }
+    }
     this.screen.render();
   }
 
   openChat(chatId: string, name: string, messages: MessageSummary[]): void {
     this.activeChatId = chatId;
+    const index = this.chats.findIndex((chat) => chat.id === chatId);
+    if (index !== -1 && this.chats[index].unreadCount > 0) {
+      this.chats[index] = { ...this.chats[index], unreadCount: 0 };
+      this.sortAndRenderChats();
+    }
     this.threadBox.setLabel(` thread — ${name} `);
     this.threadBox.setContent("");
     for (const message of messages) {
@@ -202,19 +267,7 @@ export class Tui extends EventEmitter {
   private formatLine(message: MessageSummary, status?: "sending" | "failed"): string {
     const who = message.fromMe ? "me" : message.senderName;
     const suffix = status === "sending" ? "  (sending…)" : status === "failed" ? "  (failed to send)" : "";
-    return `${formatTime(message.timestamp)}  ${who}\t${message.body}${suffix}`;
-  }
-
-  markUnread(chatId: string): void {
-    const index = this.chats.findIndex((chat) => chat.id === chatId);
-    if (index === -1) {
-      return;
-    }
-    this.chats[index] = {
-      ...this.chats[index],
-      unreadCount: this.chats[index].unreadCount + 1,
-    };
-    this.showChats(this.chats);
+    return `${formatTime(message.timestamp)}  ${who}\t${displayBody(message)}${suffix}`;
   }
 
   destroy(): void {

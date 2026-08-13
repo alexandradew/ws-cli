@@ -23,6 +23,7 @@ async function main(): Promise<void> {
       senderName: "me",
       body: text,
       timestamp: Math.floor(Date.now() / 1000),
+      type: "chat",
     };
   }
 
@@ -49,9 +50,7 @@ async function main(): Promise<void> {
       }
     }
     tui.appendMessage(message);
-    if (!message.fromMe && message.chatId !== activeChatName) {
-      tui.markUnread(message.chatId);
-    }
+    tui.registerActivity(message);
   });
 
   wa.on("auth_failure", (reason) => {
@@ -65,11 +64,10 @@ async function main(): Promise<void> {
     });
   });
 
-  tui.on("selectChat", async (chatId) => {
+  tui.on("selectChat", async (chatId, name) => {
     activeChatName = chatId;
-    const [chat] = (await wa.listChats()).filter((c) => c.id === chatId);
     const messages = await wa.getMessages(chatId);
-    tui.openChat(chatId, chat?.name ?? chatId, messages);
+    tui.openChat(chatId, name, messages);
   });
 
   tui.on("send", async (text) => {
